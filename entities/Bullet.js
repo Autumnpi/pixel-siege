@@ -1,0 +1,97 @@
+class Bullet extends Phaser.Physics.Arcade.Image {
+    constructor(scene, x, y) {
+        super(scene, x, y, 'bullet');
+        this._born = 0;
+        this._lifespan = CONSTANTS.BULLET_LIFESPAN;
+    }
+
+    fire(x, y, angle, speed, lifespan) {
+        this.setActive(true).setVisible(true);
+        this.setPosition(x, y);
+        this.body.reset(x, y);
+        this.setRotation(angle);
+        this._born = 0;
+        this._lifespan = lifespan || CONSTANTS.BULLET_LIFESPAN;
+        this.scene.physics.velocityFromAngle(
+            Phaser.Math.RadToDeg(angle), speed || CONSTANTS.BULLET_SPEED,
+            this.body.velocity
+        );
+    }
+
+    preUpdate(time, delta) {
+        super.preUpdate(time, delta);
+        if (!this.active) return;
+        this._born += delta;
+        if (this._born > this._lifespan) {
+            this.setActive(false).setVisible(false);
+        }
+    }
+}
+
+class EnemyBullet extends Phaser.Physics.Arcade.Image {
+    constructor(scene, x, y) {
+        super(scene, x, y, 'enemy_bullet');
+        this._born = 0;
+    }
+
+    fire(x, y, angle) {
+        this.setActive(true).setVisible(true);
+        this.setPosition(x, y);
+        this.body.reset(x, y);
+        this.setRotation(angle);
+        this._born = 0;
+        this.scene.physics.velocityFromAngle(
+            Phaser.Math.RadToDeg(angle), CONSTANTS.ENEMY_BULLET_SPEED,
+            this.body.velocity
+        );
+    }
+
+    preUpdate(time, delta) {
+        super.preUpdate(time, delta);
+        if (!this.active) return;
+        this._born += delta;
+        if (this._born > CONSTANTS.ENEMY_BULLET_LIFESPAN) {
+            this.setActive(false).setVisible(false);
+        }
+    }
+}
+
+class BulletPool {
+    constructor(scene) {
+        this.group = scene.physics.add.group({
+            classType: Bullet,
+            maxSize: 80,
+            runChildUpdate: true,
+            defaultKey: 'bullet',
+        });
+    }
+
+    fire(x, y, angle) {
+        const b = this.group.get();
+        if (!b) return null;
+        b.setTexture('bullet');
+        b.fire(x, y, angle);
+        b.setDepth(20);
+        return b;
+    }
+}
+
+class EnemyBulletPool {
+    constructor(scene) {
+        this.group = scene.physics.add.group({
+            classType: EnemyBullet,
+            maxSize: 120,
+            runChildUpdate: true,
+            defaultKey: 'enemy_bullet',
+        });
+    }
+
+    fire(x, y, angle) {
+        const b = this.group.get();
+        if (!b) return null;
+        b.setTexture('enemy_bullet');
+        b.fire(x, y, angle);
+        b.setDepth(21);
+        return b;
+    }
+}

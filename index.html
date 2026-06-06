@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Siege</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+    </style>
+    <!-- Pixel font from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Phaser 3 engine -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+
+    <!-- Data (no dependencies) -->
+    <script src="data/constants.js"></script>
+    <script src="data/sprites.js"></script>
+    <script src="data/levels.js"></script>
+
+    <!-- Systems -->
+    <script src="systems/SpriteFactory.js"></script>
+    <script src="systems/AudioManager.js"></script>
+
+    <!-- Entities (in dependency order) -->
+    <script src="entities/Bullet.js"></script>
+    <script src="entities/Player.js"></script>
+    <script src="entities/EnemyBase.js"></script>
+    <script src="entities/EnemyDrone.js"></script>
+    <script src="entities/EnemyTank.js"></script>
+    <script src="entities/EnemyShooter.js"></script>
+    <script src="entities/EnemyBoss.js"></script>
+
+    <!-- More systems (need entity classes) -->
+    <script src="systems/WaveManager.js"></script>
+    <script src="systems/CollisionManager.js"></script>
+
+    <!-- Scenes (in usage order) -->
+    <script src="scenes/BootScene.js"></script>
+    <script src="scenes/MenuScene.js"></script>
+    <script src="scenes/HUDScene.js"></script>
+    <script src="scenes/LevelCompleteScene.js"></script>
+    <script src="scenes/GameOverScene.js"></script>
+    <script src="scenes/GameScene.js"></script>
+
+    <!-- Game entry point -->
+    <script src="main.js"></script>
+</body>
+</html>

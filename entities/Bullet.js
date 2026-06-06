@@ -8,6 +8,7 @@ class Bullet extends Phaser.Physics.Arcade.Image {
     fire(x, y, angle, speed, lifespan) {
         this.setActive(true).setVisible(true);
         this.setPosition(x, y);
+        if (!this.body) { this.setActive(false); return; }
         this.body.reset(x, y);
         this.setRotation(angle);
         this._born = 0;
@@ -37,6 +38,7 @@ class EnemyBullet extends Phaser.Physics.Arcade.Image {
     fire(x, y, angle) {
         this.setActive(true).setVisible(true);
         this.setPosition(x, y);
+        if (!this.body) { this.setActive(false); return; }
         this.body.reset(x, y);
         this.setRotation(angle);
         this._born = 0;
@@ -67,12 +69,17 @@ class BulletPool {
     }
 
     fire(x, y, angle) {
-        const b = this.group.get();
-        if (!b) return null;
-        b.setTexture('bullet');
-        b.fire(x, y, angle);
-        b.setDepth(20);
-        return b;
+        try {
+            const b = this.group.get();
+            if (!b) return null;
+            b.setTexture('bullet');
+            b.fire(x, y, angle);
+            b.setDepth(20);
+            return b;
+        } catch (e) {
+            console.warn('BulletPool.fire error:', e);
+            return null;
+        }
     }
 }
 
@@ -87,11 +94,16 @@ class EnemyBulletPool {
     }
 
     fire(x, y, angle) {
-        const b = this.group.get();
-        if (!b) return null;
-        b.setTexture('enemy_bullet');
-        b.fire(x, y, angle);
-        b.setDepth(21);
-        return b;
+        try {
+            const b = this.group.get();
+            if (!b) return null;
+            b.setTexture('enemy_bullet');
+            b.fire(x, y, angle);
+            b.setDepth(21);
+            return b;
+        } catch (e) {
+            console.warn('EnemyBulletPool.fire error:', e);
+            return null;
+        }
     }
 }

@@ -48,8 +48,12 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     shoot(bulletPool, time) {
-        bulletPool.fire(this.x, this.y, this.rotation);
-        this.scene.audio.play('shoot');
+        try {
+            bulletPool.fire(this.x, this.y, this.rotation);
+            this.scene.audio.play('shoot');
+        } catch (e) {
+            console.warn('Player.shoot error:', e);
+        }
         this.lastShot = time;
     }
 

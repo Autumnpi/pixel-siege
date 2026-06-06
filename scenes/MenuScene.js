@@ -81,7 +81,7 @@ class MenuScene extends Phaser.Scene {
         }).setOrigin(0.5);
 
         // Credits
-        this.add.text(W / 2, 575, 'v1.0  ·  CLAUDE + YOU', {
+        this.add.text(W / 2, 575, 'v1.01  ·  CLAUDE + YOU', {
             fontFamily: '"Press Start 2P", monospace',
             fontSize: '7px', color: '#444444',
         }).setOrigin(0.5);

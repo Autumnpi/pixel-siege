@@ -1,4 +1,4 @@
-class Bullet extends Phaser.Physics.Arcade.Image {
+class Bullet extends Phaser.Physics.Arcade.Sprite {
     constructor(scene, x, y) {
         super(scene, x, y, 'bullet');
         this._born = 0;
@@ -29,7 +29,7 @@ class Bullet extends Phaser.Physics.Arcade.Image {
     }
 }
 
-class EnemyBullet extends Phaser.Physics.Arcade.Image {
+class EnemyBullet extends Phaser.Physics.Arcade.Sprite {
     constructor(scene, x, y) {
         super(scene, x, y, 'enemy_bullet');
         this._born = 0;

@@ -48,8 +48,11 @@ class MenuScene extends Phaser.Scene {
         this.add.text(W / 2, 475, 'MOUSE AIM  +  CLICK  =  SHOOT', {
             fontFamily: '"Press Start 2P", monospace', fontSize: '8px', color: '#666666',
         }).setOrigin(0.5);
-        this.add.text(W / 2, 495, 'HOLD CLICK  =  CHARGE SHOT     ESC  =  PAUSE', {
+        this.add.text(W / 2, 495, 'DEAL DAMAGE  =  FILLS CHARGE     Q  =  CHARGE SHOT', {
             fontFamily: '"Press Start 2P", monospace', fontSize: '8px', color: '#666666',
+        }).setOrigin(0.5);
+        this.add.text(W / 2, 513, 'FIRE EARLY (WEAK)  —  OR WAIT FOR FULL POWER', {
+            fontFamily: '"Press Start 2P", monospace', fontSize: '7px', color: '#444444',
         }).setOrigin(0.5);
 
         // High score
@@ -59,7 +62,7 @@ class MenuScene extends Phaser.Scene {
         }).setOrigin(0.5);
 
         // Credits / version
-        this.add.text(W / 2, 572, 'v1.1  ·  CLAUDE + YOU', {
+        this.add.text(W / 2, 572, 'v1.2  ·  CLAUDE + YOU', {
             fontFamily: '"Press Start 2P", monospace', fontSize: '7px', color: '#444444',
         }).setOrigin(0.5);
 

@@ -10,6 +10,7 @@ class HUDScene extends Phaser.Scene {
         this._level     = data.level || 1;
         this._levelName = data.levelName || '';
         this._timerFlashing = false;
+        this._chargeFullTween = null;
     }
 
     create() {
@@ -54,13 +55,45 @@ class HUDScene extends Phaser.Scene {
             stroke: '#553300', strokeThickness: 4,
         }).setOrigin(0.5).setAlpha(0);
 
-        // Charge bar (bottom-left)
-        const barX = 10, barY = H - 18;
-        this._chargeLbl     = this.add.text(barX, barY - 14, 'CHARGE', {
-            fontFamily: '"Press Start 2P", monospace', fontSize: '6px', color: '#006688',
-        }).setAlpha(0);
-        this._chargeBgRect  = this.add.rectangle(barX + 60, barY, 120, 10, 0x112233).setAlpha(0);
-        this._chargeFill    = this.add.rectangle(barX, barY, 0, 10, 0x006699).setOrigin(0, 0.5).setAlpha(0);
+        // ── Charge meter (bottom-left, always visible) ──────────
+        // Layout: label row, bar row, status row
+        const barLeft = 10;
+        const barTop  = H - 52;
+        const barW    = 160;
+        const barH    = 12;
+
+        // Bottom-left panel background
+        const panelG = this.add.graphics();
+        panelG.fillStyle(0x000000, 0.45);
+        panelG.fillRect(barLeft - 4, barTop - 18, barW + 30, 58);
+
+        // Label + key hint
+        this.add.text(barLeft, barTop - 14, 'CHARGE', {
+            fontFamily: '"Press Start 2P", monospace', fontSize: '6px', color: '#336655',
+        }).setOrigin(0, 0);
+        this._chargeKeyHint = this.add.text(barLeft + barW - 2, barTop - 14, '[Q]', {
+            fontFamily: '"Press Start 2P", monospace', fontSize: '6px', color: '#335544',
+        }).setOrigin(1, 0);
+
+        // Bar background
+        const barBgG = this.add.graphics();
+        barBgG.fillStyle(0x0a1a14, 1);
+        barBgG.fillRect(barLeft, barTop, barW, barH);
+        barBgG.lineStyle(1, 0x224433, 1);
+        barBgG.strokeRect(barLeft, barTop, barW, barH);
+
+        // Bar fill (redrawn on chargeChanged)
+        this._chargeFillG = this.add.graphics();
+
+        // Percentage text (right of bar)
+        this._chargePctTxt = this.add.text(barLeft + barW + 5, barTop + barH / 2, '0%', {
+            fontFamily: '"Press Start 2P", monospace', fontSize: '6px', color: '#224433',
+        }).setOrigin(0, 0.5);
+
+        // Status text (below bar)
+        this._chargeStatusTxt = this.add.text(barLeft + barW / 2, barTop + barH + 8, 'DEAL DAMAGE', {
+            fontFamily: '"Press Start 2P", monospace', fontSize: '6px', color: '#224433',
+        }).setOrigin(0.5, 0);
 
         // Wire up game scene events
         const game = this.scene.get('Game');
@@ -83,7 +116,14 @@ class HUDScene extends Phaser.Scene {
                 g2.events.off('timerExpired',  this._onTimerExpired, this);
                 g2.events.off('chargeChanged', this._onCharge,       this);
             }
+            if (this._chargeFullTween) this._chargeFullTween.stop();
         });
+
+        // Store layout constants for _onCharge
+        this._barLeft = barLeft;
+        this._barTop  = barTop;
+        this._barW    = barW;
+        this._barH    = barH;
     }
 
     _onScore(score) {
@@ -124,7 +164,6 @@ class HUDScene extends Phaser.Scene {
     _onTimerExpired() {
         this.tweens.killTweensOf(this._timerTxt);
         this._timerTxt.setAlpha(1).setText('TIME UP!').setColor('#ff0000');
-        // Full-screen red flash
         const flash = this.add.rectangle(
             CONSTANTS.WIDTH / 2, CONSTANTS.HEIGHT / 2,
             CONSTANTS.WIDTH, CONSTANTS.HEIGHT, 0xff0000, 0
@@ -135,17 +174,51 @@ class HUDScene extends Phaser.Scene {
         });
     }
 
-    _onCharge(pct) {
-        if (pct > 0) {
-            this._chargeBgRect.setAlpha(0.7);
-            this._chargeLbl.setAlpha(1);
-            this._chargeFill.setAlpha(1);
-            this._chargeFill.setSize(Math.floor(120 * pct), 10);
-            this._chargeFill.setFillStyle(pct >= 1 ? 0x00ffff : 0x006699);
+    // meter = 0–100
+    _onCharge(meter) {
+        const { _barLeft: bx, _barTop: by, _barW: bw, _barH: bh } = this;
+        if (!bx) return;
+
+        const pct   = meter / 100;
+        const fillW = Math.floor(bw * pct);
+
+        let fillColor;
+        if (meter < CONSTANTS.CHARGE_MIN_PCT)  fillColor = 0x0d2a1e;  // dim — not yet usable
+        else if (meter < 50)                    fillColor = 0x00aa44;  // green — low charge
+        else if (meter < 80)                    fillColor = 0xddaa00;  // yellow — medium
+        else if (meter < 100)                   fillColor = 0xff6600;  // orange — nearly full
+        else                                    fillColor = 0x00ffff;  // cyan — max power
+
+        this._chargeFillG.clear();
+        if (fillW > 0) {
+            this._chargeFillG.fillStyle(fillColor, 1);
+            this._chargeFillG.fillRect(bx, by, fillW, bh);
+        }
+
+        this._chargePctTxt.setText(`${Math.floor(meter)}%`);
+        this._chargePctTxt.setColor(meter >= CONSTANTS.CHARGE_MIN_PCT ? '#aaffcc' : '#224433');
+
+        if (meter >= 100) {
+            this._chargeStatusTxt.setText('* MAX POWER *').setColor('#00ffff').setAlpha(1);
+            if (!this._chargeFullTween) {
+                this._chargeFullTween = this.tweens.add({
+                    targets: this._chargeStatusTxt, alpha: 0.2, duration: 280, yoyo: true, repeat: -1,
+                });
+            }
+        } else if (meter >= CONSTANTS.CHARGE_MIN_PCT) {
+            if (this._chargeFullTween) {
+                this._chargeFullTween.stop();
+                this._chargeFullTween = null;
+                this._chargeStatusTxt.setAlpha(1);
+            }
+            this._chargeStatusTxt.setText('[Q] FIRE READY').setColor('#00ff88');
         } else {
-            this._chargeBgRect.setAlpha(0);
-            this._chargeLbl.setAlpha(0);
-            this._chargeFill.setSize(0, 10).setAlpha(0);
+            if (this._chargeFullTween) {
+                this._chargeFullTween.stop();
+                this._chargeFullTween = null;
+                this._chargeStatusTxt.setAlpha(1);
+            }
+            this._chargeStatusTxt.setText('DEAL DAMAGE').setColor('#224433');
         }
     }
 

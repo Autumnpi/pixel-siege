@@ -58,20 +58,27 @@ class AudioManager {
         this._bgmInterval = setInterval(() => {
             if (!this.ctx || this._muted) return;
             const t   = this.ctx.currentTime;
+            const dur = pat.stepMs / 1000;
             const bi  = this._bgmTick % pat.bass.length;
             const mi  = this._bgmTick % pat.melody.length;
-            const dur = pat.stepMs / 1000;
+            const ai  = this._bgmTick % pat.arp.length;
+            const ci  = this._bgmTick % pat.counter.length;
 
+            // Bass: square wave, punchy
             if (pat.bass[bi])
-                this._noteOsc('square',   pat.bass[bi],   0.20, dur * 0.85, t, this.bgmGain);
+                this._noteOsc('square',   pat.bass[bi],    0.18, dur * 0.7,  t, this.bgmGain);
+            // Melody: long sustained triangle pad (the main 80s synth sound)
             if (pat.melody[mi])
-                this._noteOsc('triangle', pat.melody[mi], 0.13, dur * 0.65, t, this.bgmGain);
-            // Counter-melody kicks in on wave 2+
-            if (this._bgmWave >= 2 && pat.counter[mi])
-                this._noteOsc('sine', pat.counter[mi], 0.07, dur * 0.5, t, this.bgmGain);
-            // Extra percussion layer on wave 3+
+                this._noteOsc('triangle', pat.melody[mi],  0.13, dur * 6.5,  t, this.bgmGain);
+            // Arpeggio: fast staccato sine (glassy 80s arp texture)
+            if (pat.arp[ai])
+                this._noteOsc('sine',     pat.arp[ai],     0.05, dur * 0.4,  t, this.bgmGain);
+            // Counter-melody: harmony 3rds, appears on wave 2+
+            if (this._bgmWave >= 2 && pat.counter[ci])
+                this._noteOsc('sine',     pat.counter[ci], 0.06, dur * 5.5,  t, this.bgmGain);
+            // Percussion accent on wave 3+
             if (this._bgmWave >= 3 && bi % 4 === 0)
-                this._noiseBurst(0.06, dur * 0.08, t, this.bgmGain);
+                this._noiseBurst(0.05, dur * 0.1, t, this.bgmGain);
 
             this._bgmTick++;
         }, pat.stepMs);
@@ -88,59 +95,151 @@ class AudioManager {
         if (this.master) this.master.gain.value = muted ? 0 : 0.6;
     }
 
-    // ── BGM patterns ────────────────────────────────────────────
+    // ── BGM patterns ──────────────────────────────────────────────
+    // 80s sci-fi synth style: major/mixolydian/dorian modes.
+    // Three voices per pattern:
+    //   bass    (16 steps, quarter notes)  — loops every 2 s at 125ms step
+    //   melody  (64 steps, half notes, long sustain) — loops every 8 s
+    //   arp     (16 steps, 16th notes, staccato) — fast chord arpeggio texture
+    //   counter (64 steps, half notes) — parallel 3rds harmony, wave 2+
     _bgmPatterns = {
-        // Chapter 1 — A minor, moody (136 BPM 8th notes)
+        // Chapter 1 — D Major "Sector Alpha" (120 BPM, 125 ms / 16th note)
+        // Bass: D2 A2 G2 A2 (I–V–IV–V pattern)
+        // Melody: D5→B4→A4→G4→F#4→A4→B4→D5 (major descending arc)
         ch1: {
-            stepMs: 220,
-            bass:    [110,0,0,0, 82.41,0,0,0, 87.31,0,0,0, 98,0,0,0],
-            melody:  [329.63,0,392,0,   440,0,392,0,
-                      349.23,0,329.63,0, 261.63,0,0,0,
-                      293.66,0,329.63,0, 392,0,440,0,
-                      493.88,0,440,0,   392,0,329.63,0],
-            counter: [0,0,0,0,659.25,0,0,0,
-                      0,0,0,0,523.25,0,0,0,
-                      0,0,0,0,587.33,0,0,0,
-                      0,0,0,0,659.25,0,0,0],
+            stepMs: 125,
+            bass: [73.42,0,0,0, 110,0,0,0, 98,0,0,0, 110,0,0,0],
+            melody: [
+                587.33,0,0,0,0,0,0,0,  // D5
+                493.88,0,0,0,0,0,0,0,  // B4
+                440,   0,0,0,0,0,0,0,  // A4
+                392,   0,0,0,0,0,0,0,  // G4
+                369.99,0,0,0,0,0,0,0,  // F#4
+                440,   0,0,0,0,0,0,0,  // A4
+                493.88,0,0,0,0,0,0,0,  // B4
+                587.33,0,0,0,0,0,0,0,  // D5
+            ],
+            // Fast arpeggio cycling chord tones each quarter note
+            arp: [
+                293.66,369.99,440,587.33,   // D4 F#4 A4 D5 (D major)
+                220,   277.18,329.63,440,   // A3 C#4 E4 A4 (A major)
+                196,   246.94,293.66,392,   // G3 B3 D4 G4 (G major)
+                329.63,440,   554.37,659.25, // E4 A4 C#5 E5 (A major hi)
+            ],
+            // Parallel 3rds below melody: B4 G4 F#4 E4 D4 F#4 G4 B4
+            counter: [
+                493.88,0,0,0,0,0,0,0,  // B4
+                392,   0,0,0,0,0,0,0,  // G4
+                369.99,0,0,0,0,0,0,0,  // F#4
+                329.63,0,0,0,0,0,0,0,  // E4
+                293.66,0,0,0,0,0,0,0,  // D4
+                369.99,0,0,0,0,0,0,0,  // F#4
+                392,   0,0,0,0,0,0,0,  // G4
+                493.88,0,0,0,0,0,0,0,  // B4
+            ],
         },
-        // Chapter 2 — D minor, urgent (154 BPM)
+
+        // Chapter 2 — A Dorian "Deep Space" (130 BPM, 115 ms / 16th note)
+        // Dorian = natural minor with raised 6th (F#) — bright, mysterious, classic 80s sci-fi
+        // Bass: A2 E3 D3 G3 (i–V–IV–VII)
+        // Melody: A4→C5→E5→D5→C5→B4→F#4→A4 (Dorian ascent then resolve)
         ch2: {
-            stepMs: 195,
-            bass:    [73.42,0,0,0, 87.31,0,0,0, 110,0,0,0, 116.54,0,0,0],
-            melody:  [349.23,0,440,0,    587.33,0,523.25,0,
-                      440,0,392,0,       349.23,0,329.63,0,
-                      293.66,0,349.23,0, 392,0,440,0,
-                      493.88,0,587.33,0, 466.16,0,440,0],
-            counter: [0,0,0,0,880,0,0,0,
-                      0,0,0,0,783.99,0,0,0,
-                      0,0,0,0,880,0,0,0,
-                      0,0,0,0,987.77,0,0,0],
+            stepMs: 115,
+            bass: [110,0,0,0, 164.81,0,0,0, 146.83,0,0,0, 196,0,0,0],
+            melody: [
+                440,   0,0,0,0,0,0,0,  // A4
+                523.25,0,0,0,0,0,0,0,  // C5
+                659.25,0,0,0,0,0,0,0,  // E5
+                587.33,0,0,0,0,0,0,0,  // D5
+                523.25,0,0,0,0,0,0,0,  // C5
+                493.88,0,0,0,0,0,0,0,  // B4
+                369.99,0,0,0,0,0,0,0,  // F#4 (Dorian brightness)
+                440,   0,0,0,0,0,0,0,  // A4
+            ],
+            // Chord arpeggios: Am, Em, Dm, Gm
+            arp: [
+                220,   261.63,329.63,440,    // A3 C4 E4 A4 (Am)
+                164.81,196,   246.94,329.63, // E3 G3 B3 E4 (Em)
+                146.83,184.99,220,   293.66, // D3 F#3 A3 D4 (D major — Dorian IV!)
+                196,   246.94,293.66,392,    // G3 B3 D4 G4 (G major)
+            ],
+            // Parallel 3rds below: F#4 A4 C5 B4 A4 G4 D4 F#4
+            counter: [
+                369.99,0,0,0,0,0,0,0,  // F#4
+                440,   0,0,0,0,0,0,0,  // A4
+                523.25,0,0,0,0,0,0,0,  // C5
+                493.88,0,0,0,0,0,0,0,  // B4
+                440,   0,0,0,0,0,0,0,  // A4
+                392,   0,0,0,0,0,0,0,  // G4
+                293.66,0,0,0,0,0,0,0,  // D4
+                369.99,0,0,0,0,0,0,0,  // F#4
+            ],
         },
-        // Chapter 3 — E minor, intense (171 BPM)
+
+        // Chapter 3 — B Major "Final Sector" (140 BPM, 107 ms / 16th note)
+        // Pure major — heroic, epic, climactic
+        // Bass: B2 F#3 E3 G#3 (I–V–IV–VI)
+        // Melody: B4→D#5→F#5→E5→C#5→G#4→F#4→B4 (dramatic B major ascent)
         ch3: {
-            stepMs: 175,
-            bass:    [82.41,0,0,0, 98,0,0,0, 123.47,0,0,0, 130.81,0,0,0],
-            melody:  [392,0,493.88,0,   659.25,0,493.88,0,
-                      392,0,369.99,0,   329.63,0,293.66,0,
-                      261.63,0,293.66,0, 329.63,0,369.99,0,
-                      392,0,440,0,       493.88,0,659.25,0],
-            counter: [0,0,659.25,0,0,0,987.77,0,
-                      0,0,783.99,0,0,0,659.25,0,
-                      0,0,523.25,0,0,0,659.25,0,
-                      0,0,783.99,0,0,0,987.77,0],
+            stepMs: 107,
+            bass: [123.47,0,0,0, 184.99,0,0,0, 164.81,0,0,0, 207.65,0,0,0],
+            melody: [
+                493.88,0,0,0,0,0,0,0,  // B4
+                622.25,0,0,0,0,0,0,0,  // D#5
+                739.99,0,0,0,0,0,0,0,  // F#5
+                659.25,0,0,0,0,0,0,0,  // E5
+                554.37,0,0,0,0,0,0,0,  // C#5
+                415.3, 0,0,0,0,0,0,0,  // G#4
+                369.99,0,0,0,0,0,0,0,  // F#4
+                493.88,0,0,0,0,0,0,0,  // B4
+            ],
+            // Chord arpeggios: B, F#, E, G#m
+            arp: [
+                246.94,311.13,369.99,493.88,  // B3 D#4 F#4 B4 (B major)
+                184.99,233.08,277.18,369.99,  // F#3 A#3 C#4 F#4 (F# major)
+                164.81,207.65,246.94,329.63,  // E3 G#3 B3 E4 (E major)
+                207.65,246.94,311.13,415.3,   // G#3 B3 D#4 G#4 (G#m)
+            ],
+            // Parallel 3rds below: G#4 B4 D#5 C#5 A#4 E4 D#4 G#4
+            counter: [
+                415.3, 0,0,0,0,0,0,0,  // G#4
+                493.88,0,0,0,0,0,0,0,  // B4
+                622.25,0,0,0,0,0,0,0,  // D#5
+                554.37,0,0,0,0,0,0,0,  // C#5
+                466.16,0,0,0,0,0,0,0,  // A#4
+                329.63,0,0,0,0,0,0,0,  // E4
+                311.13,0,0,0,0,0,0,0,  // D#4
+                415.3, 0,0,0,0,0,0,0,  // G#4
+            ],
         },
-        // Boss — slow, ominous (100 BPM)
+
+        // Boss — C Harmonic Minor "Confrontation" (90 BPM, 167 ms / 16th note)
+        // Harmonic minor with B natural leading tone: tense, cinematic, Blade Runner-ish
+        // Bass: C2 (very long, 8 steps) Ab2 (very long) — slow and ominous
+        // Melody: C5→B4→Ab4→G4 (descending into tension)
         boss: {
-            stepMs: 300,
-            bass:    [55,0,0,0,0,0,0,0, 58.27,0,0,0,0,0,0,0],
-            melody:  [220,0,0,0,   261.63,0,0,0,
-                      311.13,0,0,0, 329.63,0,0,0,
-                      392,0,0,0,   349.23,0,0,0,
-                      311.13,0,0,0, 220,0,0,0],
-            counter: [0,0,0,0,440,0,0,0,
-                      0,0,0,0,659.25,0,0,0,
-                      0,0,0,0,587.33,0,0,0,
-                      0,0,0,0,440,0,0,0],
+            stepMs: 167,
+            bass: [65.41,0,0,0,0,0,0,0, 103.83,0,0,0,0,0,0,0],
+            melody: [
+                523.25,0,0,0,0,0,0,0,  // C5
+                493.88,0,0,0,0,0,0,0,  // B4 (leading tone — harmonic minor)
+                415.3, 0,0,0,0,0,0,0,  // Ab4
+                392,   0,0,0,0,0,0,0,  // G4
+            ],
+            // Tense chromatic arpeggios: Cm, Cm, F/Ab, Cm+B (leading tone)
+            arp: [
+                261.63,311.13,392,   523.25,  // C4 Eb4 G4 C5 (Cm)
+                261.63,311.13,392,   523.25,  // C4 Eb4 G4 C5 (Cm repeat)
+                261.63,349.23,415.3, 523.25,  // C4 F4 Ab4 C5 (Fm/Ab variant)
+                261.63,311.13,493.88,523.25,  // C4 Eb4 B4 C5 (B natural tension!)
+            ],
+            // Counter 3rds below: Ab4 G4 F4 Eb4
+            counter: [
+                415.3, 0,0,0,0,0,0,0,  // Ab4
+                392,   0,0,0,0,0,0,0,  // G4
+                349.23,0,0,0,0,0,0,0,  // F4
+                311.13,0,0,0,0,0,0,0,  // Eb4
+            ],
         },
     };
 
@@ -198,7 +297,6 @@ class AudioManager {
 
         charge_shoot() {
             const t = this.ctx.currentTime;
-            // Low boom
             const osc = this.ctx.createOscillator();
             const g   = this.ctx.createGain();
             osc.type = 'sawtooth';
@@ -208,7 +306,6 @@ class AudioManager {
             g.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
             osc.connect(g).connect(this.sfxGain);
             osc.start(t); osc.stop(t + 0.46);
-            // High zip
             const osc2 = this.ctx.createOscillator();
             const g2   = this.ctx.createGain();
             osc2.type = 'square';
@@ -256,7 +353,7 @@ class AudioManager {
 
         wave_clear() {
             const t = this.ctx.currentTime;
-            this._noteOsc('square', 523.25, 0.2, 0.08, t,      this.sfxGain);
+            this._noteOsc('square', 523.25, 0.2, 0.08, t,       this.sfxGain);
             this._noteOsc('square', 659.25, 0.2, 0.08, t + 0.1, this.sfxGain);
         },
 

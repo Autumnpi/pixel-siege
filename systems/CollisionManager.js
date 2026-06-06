@@ -8,7 +8,7 @@ const CollisionManager = {
         const sg  = scene.shooterGroup;
         const bg  = scene.bossGroup;
 
-        // Player bullets hit enemies (use bullet's own damage value)
+        // Player bullets hit enemies — also fills player charge meter
         [dg, tg, sg, bg].forEach(group => {
             scene.physics.add.overlap(bp, group, (bullet, enemy) => {
                 if (!bullet.active || !enemy.active) return;
@@ -17,6 +17,10 @@ const CollisionManager = {
                 bullet.setScale(1);
                 bullet.clearTint();
                 enemy.takeDamage(dmg);
+                // Each damage point fills CHARGE_METER_PER_DAMAGE % of the charge meter
+                if (p && p.active) {
+                    p.addChargeMeter(dmg * CONSTANTS.CHARGE_METER_PER_DAMAGE);
+                }
             });
         });
 

@@ -88,13 +88,17 @@ class BulletPool {
         }
     }
 
-    fireCharged(x, y, angle) {
+    // damage and size are determined by charge level — passed from Player.useChargeMeter
+    fireCharged(x, y, angle, damage, size) {
         try {
             const b = this.group.get();
             if (!b) return null;
             b.setTexture('bullet');
-            b.fire(x, y, angle, CONSTANTS.CHARGE_SPEED, CONSTANTS.BULLET_LIFESPAN, CONSTANTS.CHARGE_DAMAGE, 3);
-            b.setTint(0x00ffff);
+            b.fire(x, y, angle, CONSTANTS.CHARGE_SPEED, CONSTANTS.BULLET_LIFESPAN, damage, size);
+            // Tint reflects charge power: green → yellow → cyan
+            const pct = (damage - CONSTANTS.CHARGE_DAMAGE_MIN) /
+                        (CONSTANTS.CHARGE_DAMAGE_MAX - CONSTANTS.CHARGE_DAMAGE_MIN);
+            b.setTint(pct >= 0.8 ? 0x00ffff : pct >= 0.4 ? 0xffcc00 : 0x44ff88);
             b.setDepth(20);
             return b;
         } catch (e) {

@@ -14,12 +14,8 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.lastShot = -9999;
         this.invincible = false;
 
-        // Charge state
-        this._chargeStart = 0;
-        this._charging = false;
-        this._chargeLastFired = -9999;
-        this._chargeReadyPlayed = false;
-        this._pointerWasDown = false;
+        // Charge meter (0–100, fills as player deals damage)
+        this._chargeMeter = 0;
 
         this.play('player');
     }
@@ -51,50 +47,46 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     _handleShooting(pointer, bulletPool, time) {
-        const isDown = pointer.isDown;
+        if (pointer.isDown && time > this.lastShot + CONSTANTS.BULLET_COOLDOWN) {
+            this._fireNormal(bulletPool, time);
+        }
+    }
 
-        if (isDown) {
-            if (this._chargeStart === 0) {
-                this._chargeStart = time;
-                this._chargeReadyPlayed = false;
+    // Called by CollisionManager whenever a player bullet deals damage
+    addChargeMeter(pct) {
+        const prev = this._chargeMeter;
+        this._chargeMeter = Math.min(100, this._chargeMeter + pct);
+        if (Math.floor(this._chargeMeter) !== Math.floor(prev)) {
+            this.scene.events.emit('chargeChanged', this._chargeMeter);
+            // Play ready sound at the threshold crossing
+            if (prev < CONSTANTS.CHARGE_MIN_PCT && this._chargeMeter >= CONSTANTS.CHARGE_MIN_PCT) {
+                this.scene.audio.play('charge_ready');
             }
-            const held = time - this._chargeStart;
+        }
+    }
 
-            if (held < CONSTANTS.CHARGE_MIN_HOLD) {
-                // Normal auto-fire while tapping/short press
-                if (time > this.lastShot + CONSTANTS.BULLET_COOLDOWN) {
-                    this._fireNormal(bulletPool, time);
-                }
-                this._charging = false;
-                this.scene.events.emit('chargeChanged', 0);
-            } else {
-                // Charging — stop normal fire, show charge meter
-                this._charging = true;
-                const pct = Math.min(
-                    (held - CONSTANTS.CHARGE_MIN_HOLD) / (CONSTANTS.CHARGE_MAX_HOLD - CONSTANTS.CHARGE_MIN_HOLD),
-                    1
-                );
-                this.scene.events.emit('chargeChanged', pct);
-                if (pct >= 1 && !this._chargeReadyPlayed) {
-                    this._chargeReadyPlayed = true;
-                    this.scene.audio.play('charge_ready');
-                }
+    // Called when player presses Q — fires at whatever meter level is available
+    useChargeMeter(bulletPool) {
+        if (this._chargeMeter < CONSTANTS.CHARGE_MIN_PCT) return;
+
+        const pct    = this._chargeMeter / 100;
+        const damage = CONSTANTS.CHARGE_DAMAGE_MIN +
+                       Math.round(pct * (CONSTANTS.CHARGE_DAMAGE_MAX - CONSTANTS.CHARGE_DAMAGE_MIN));
+        const size   = CONSTANTS.CHARGE_SIZE_MIN +
+                       pct * (CONSTANTS.CHARGE_SIZE_MAX - CONSTANTS.CHARGE_SIZE_MIN);
+
+        try {
+            const b = bulletPool.fireCharged(this.x, this.y, this.rotation, damage, size);
+            if (b) {
+                this.scene.audio.play('charge_shoot');
+                if (pct >= 0.5) this.scene.cameras.main.shake(150, 0.008 + pct * 0.017);
             }
-        } else {
-            // Pointer just released
-            if (this._pointerWasDown && this._charging) {
-                if (time > this._chargeLastFired + CONSTANTS.CHARGE_COOLDOWN) {
-                    this._fireCharged(bulletPool, time);
-                    this._chargeLastFired = time;
-                }
-            }
-            this._charging = false;
-            this._chargeStart = 0;
-            this._chargeReadyPlayed = false;
-            this.scene.events.emit('chargeChanged', 0);
+        } catch (e) {
+            console.warn('Player.useChargeMeter error:', e);
         }
 
-        this._pointerWasDown = isDown;
+        this._chargeMeter = 0;
+        this.scene.events.emit('chargeChanged', 0);
     }
 
     _fireNormal(bulletPool, time) {
@@ -107,18 +99,6 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.lastShot = time;
     }
 
-    _fireCharged(bulletPool, time) {
-        try {
-            bulletPool.fireCharged(this.x, this.y, this.rotation);
-            this.scene.audio.play('charge_shoot');
-            this.scene.cameras.main.shake(120, 0.018);
-        } catch (e) {
-            console.warn('Player._fireCharged error:', e);
-        }
-        this.lastShot = time;
-    }
-
-    // kept for external callers
     shoot(bulletPool, time) {
         this._fireNormal(bulletPool, time);
     }

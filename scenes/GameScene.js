@@ -8,7 +8,6 @@ class GameScene extends Phaser.Scene {
         this._over       = false;
         this._timeLeft   = 120;
         this._timerActive = false;
-        this._playerCharge = 0;
     }
 
     create() {
@@ -51,9 +50,16 @@ class GameScene extends Phaser.Scene {
         this.escKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
         this.escKey.on('down', () => this._togglePause());
 
-        // Charge ring graphic
+        // Q key fires charge shot
+        this.qKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q);
+        this.qKey.on('down', () => {
+            if (!this._paused && !this._over && this.player && this.player.active) {
+                this.player.useChargeMeter(this.bulletPool);
+            }
+        });
+
+        // Charge ring — shown when meter is ready (driven from player._chargeMeter in update)
         this._chargeRing = this.add.graphics().setDepth(14);
-        this.events.on('chargeChanged', pct => { this._playerCharge = pct; });
 
         // Timer
         this._timeLeft    = levelConfig.timeLimit || 120;
@@ -103,16 +109,19 @@ class GameScene extends Phaser.Scene {
             }
         }
 
-        // Charge ring visual
+        // Charge ring — glows around player when charge meter is usable
         this._chargeRing.clear();
-        if (this._playerCharge > 0 && this.player.active) {
-            const r     = 22 + this._playerCharge * 18;
-            const alpha = 0.45 + this._playerCharge * 0.55;
-            const thick = 2 + Math.floor(this._playerCharge * 3);
-            this._chargeRing.lineStyle(thick, 0x00ffff, alpha);
+        if (this.player.active && this.player._chargeMeter >= CONSTANTS.CHARGE_MIN_PCT) {
+            const pct   = this.player._chargeMeter / 100;
+            const r     = 22 + pct * 12;
+            const alpha = 0.3 + pct * 0.5;
+            const thick = 2 + Math.floor(pct * 3);
+            const color = this.player._chargeMeter >= 100 ? 0x00ffff :
+                          this.player._chargeMeter >= 80  ? 0xff6600 : 0x00ff88;
+            this._chargeRing.lineStyle(thick, color, alpha);
             this._chargeRing.strokeCircle(this.player.x, this.player.y, r);
-            if (this._playerCharge >= 1) {
-                this._chargeRing.fillStyle(0x00ffff, 0.08);
+            if (this.player._chargeMeter >= 100) {
+                this._chargeRing.fillStyle(0x00ffff, 0.06);
                 this._chargeRing.fillCircle(this.player.x, this.player.y, r);
             }
         }

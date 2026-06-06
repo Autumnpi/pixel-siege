@@ -2,27 +2,47 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**This file is the source of truth for project state.** Current Status must never become stale. The Development Journal is append-only — entries are never edited or deleted.
+**This file is the source of truth for project state.** Read Section 0 before starting any work. Complete the Section 0 checklist before ending any session.
 
 ---
 
-## 0. Session Workflow (IMPORTANT)
+## 0. Session Workflow (MANDATORY)
 
-This section defines a mandatory process that Claude MUST follow at the end of every coding session without exception. It is part of the project design, not a suggestion.
+This is not optional guidance. Every step below is required. A session is not complete until all steps are done. If any step is skipped, the session must not be closed — finish the checklist first.
 
 ### End-of-session checklist
 
-At the end of every session, Claude MUST:
+Claude MUST complete every step in order before the session ends:
 
-1. **Summarise** what was done during the session (features added, bugs fixed, decisions made)
-2. **Update Section 2 — Current Status** so it reflects the exact state of the project right now:
-   - Move newly completed features into the completed list
-   - Update "Current focus" to reflect what was just worked on or what comes next
-   - Clear resolved bugs from "Known bugs / issues"
-   - Update "Immediate next tasks" based on what was discussed
-3. **Append a new Development Journal entry** to the bottom of Section 3 (oldest → newest ordering) using the format below
-4. **Suggest a conventional commit message** in `feat/fix/refactor/docs` style covering the code changes and the CLAUDE.md update
-5. **Confirm whether to push to GitHub** and remind the user to do so if the session produced changes worth keeping
+1. **Summarise** what was done (features added, bugs fixed, decisions made). State this explicitly in the final response.
+2. **Update Section 2 — Current Status** to match the exact current state of the project:
+   - Move completed features into the completed list
+   - Update "Current focus" to reflect what was just done or what comes next
+   - Remove resolved bugs from "Known bugs / issues"
+   - Update "Immediate next tasks" based on what was discussed or decided
+3. **Append a new Development Journal entry** at the bottom of Section 3, using the format below. Never edit, delete, or reorder existing entries.
+4. **Suggest a git commit message** in `feat/fix/refactor/docs` style that covers both the code changes and the CLAUDE.md update in a single commit.
+5. **Commit and push to GitHub.** Assume changes should always be committed and pushed unless the user explicitly says otherwise. Remind the user to run the commit if they have not already.
+
+All five steps are required. Completing four out of five is not acceptable.
+
+### Git commit convention
+
+- `feat:` — new feature or visible behaviour change
+- `fix:` — bug fix
+- `refactor:` — internal restructure with no behaviour change
+- `docs:` — CLAUDE.md or documentation only
+
+Always include a CLAUDE.md update in the same commit as the code changes that prompted it. Format:
+
+```
+feat: short description of what changed
+
+- bullet detail if needed
+- CLAUDE.md updated
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+```
 
 ### Journal entry format
 
@@ -47,9 +67,11 @@ At the end of every session, Claude MUST:
 
 ### Enforcement rules
 
-- **Current Status MUST NOT become stale.** If it describes a state that no longer exists, it is wrong and misleads future sessions.
-- **Development Journal is append-only.** Never edit, delete, or reorder past entries. Only add new entries at the bottom.
-- **CLAUDE.md is the source of truth.** If CLAUDE.md contradicts the code, the code is correct and CLAUDE.md must be updated to match. Never let them drift.
+- **A session is not finished until all five checklist steps are complete.** If the conversation ends before the checklist is done, complete it at the start of the next session before doing anything else.
+- **Current Status MUST reflect reality at all times.** If it describes a state that no longer exists, it is wrong. Fix it immediately — do not leave it stale.
+- **Development Journal is strictly append-only.** Entries go at the bottom only. Never edit, reorder, or delete any past entry under any circumstances.
+- **CLAUDE.md is the source of truth for project state.** If CLAUDE.md and the code disagree, the code is correct — update CLAUDE.md to match. If CLAUDE.md and a user's description disagree, verify against the code before updating either.
+- **Commit and push by default.** Always assume changes should be committed and pushed to GitHub unless the user explicitly says otherwise.
 
 ---
 
@@ -200,7 +222,7 @@ Chapter selection: ch1 = levels 1–2, ch2 = 4–5, ch3 = 7–8; boss = levels 3
 
 ### Current focus
 
-Nothing active — v1.2 shipped and stable.
+No code work active — v1.2 shipped and stable. Session 6 tightened CLAUDE.md workflow rules only.
 
 ### Known bugs / issues
 
@@ -344,3 +366,29 @@ Entries are ordered **oldest at the top, newest at the bottom**. Never edit or d
 
 #### Notes
 - If CLAUDE.md contradicts the code, the code is correct — update CLAUDE.md to match, not the other way around
+
+---
+
+### 2026-06-06 — Session 6
+
+#### Added
+- Git commit convention block in Section 0: prefix guide (`feat/fix/refactor/docs`), commit format with Co-Author trailer
+- Explicit rule: commit and push to GitHub by default unless user says otherwise
+
+#### Fixed
+- Nothing
+
+#### Changed / Decisions
+- Section 0 renamed from "IMPORTANT" to "MANDATORY" in the heading
+- Added rule: a session is not finished until all five checklist steps are complete; if the session ends early, finish the checklist at the start of the next session
+- Added rule: completing four of five steps is not acceptable — all five are required
+- Enforcement rules expanded: added "verify against code before updating" clause for disagreements between CLAUDE.md and user descriptions
+- Preamble updated: replaced vague "read this" note with explicit instruction to read Section 0 before starting work and complete it before ending
+- Journal ordering rule moved into enforcement block for consistency (was only in the section header)
+- Step 5 of checklist changed from "confirm whether to push" (ambiguous) to "commit and push — assume yes unless told otherwise" (unambiguous)
+
+#### Next Session
+- Follow the full Section 0 checklist — all five steps — at the end of every session
+
+#### Notes
+- The git commit message should always include both the code change and the CLAUDE.md update in a single commit, not two separate commits

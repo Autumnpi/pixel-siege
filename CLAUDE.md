@@ -2,6 +2,55 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**This file is the source of truth for project state.** Current Status must never become stale. The Development Journal is append-only — entries are never edited or deleted.
+
+---
+
+## 0. Session Workflow (IMPORTANT)
+
+This section defines a mandatory process that Claude MUST follow at the end of every coding session without exception. It is part of the project design, not a suggestion.
+
+### End-of-session checklist
+
+At the end of every session, Claude MUST:
+
+1. **Summarise** what was done during the session (features added, bugs fixed, decisions made)
+2. **Update Section 2 — Current Status** so it reflects the exact state of the project right now:
+   - Move newly completed features into the completed list
+   - Update "Current focus" to reflect what was just worked on or what comes next
+   - Clear resolved bugs from "Known bugs / issues"
+   - Update "Immediate next tasks" based on what was discussed
+3. **Append a new Development Journal entry** to the bottom of Section 3 (oldest → newest ordering) using the format below
+4. **Suggest a conventional commit message** in `feat/fix/refactor/docs` style covering the code changes and the CLAUDE.md update
+5. **Confirm whether to push to GitHub** and remind the user to do so if the session produced changes worth keeping
+
+### Journal entry format
+
+```
+### YYYY-MM-DD — Session N (vX.Y if applicable)
+
+#### Added
+- (new features, files, systems)
+
+#### Fixed
+- (bugs resolved — include root cause if non-obvious)
+
+#### Changed / Decisions
+- (design decisions, architecture choices, constants changed, things renamed or removed)
+
+#### Next Session
+- (concrete planned next steps)
+
+#### Notes
+- (anything a future Claude instance needs to know that isn't obvious from the code)
+```
+
+### Enforcement rules
+
+- **Current Status MUST NOT become stale.** If it describes a state that no longer exists, it is wrong and misleads future sessions.
+- **Development Journal is append-only.** Never edit, delete, or reorder past entries. Only add new entries at the bottom.
+- **CLAUDE.md is the source of truth.** If CLAUDE.md contradicts the code, the code is correct and CLAUDE.md must be updated to match. Never let them drift.
+
 ---
 
 ## 1. Project Reference
@@ -132,6 +181,8 @@ Chapter selection: ch1 = levels 1–2, ch2 = 4–5, ch3 = 7–8; boss = levels 3
 
 ## 2. Current Status
 
+*This section must be kept up to date at the end of every session. If it is inaccurate, fix it.*
+
 ### Completed features (v1.2)
 
 - Full 9-level game with wave-based enemy spawning
@@ -157,7 +208,7 @@ None currently reported.
 
 ### Immediate next tasks
 
-Not yet decided. Candidates discussed earlier:
+Not yet decided. Candidates discussed:
 - Procedural level generation beyond level 9 (scaling exists in WaveManager but not tested)
 - More enemy variety / boss patterns
 - Difficulty settings
@@ -167,56 +218,33 @@ Not yet decided. Candidates discussed earlier:
 
 ## 3. Development Journal
 
-Entries are appended newest-first (top of this section = most recent).
+Entries are ordered **oldest at the top, newest at the bottom**. Never edit or delete past entries — only append new ones at the bottom.
 
 ---
 
-### 2026-06-06 — Session 4
+### 2026-06-06 — Session 1 (v1.0 → v1.01)
 
 #### Added
-- `CLAUDE.md` — initial technical reference document
-- Restructured `CLAUDE.md` into Project Reference / Current Status / Development Journal
+- **Initial full game build** (`5b2e58d`): complete Phaser 3 top-down shooter — player, 4 enemy types, 9 levels, wave system, HUD, menu, level complete, game over, high score, procedural sprites via canvas, Web Audio chiptune BGM + SFX, screen shake, death particles, scorch marks, GitHub + Pages setup
 
 #### Fixed
-- Nothing
+- **Game freeze on shoot** (`b53e721`): root cause — `Bullet` and `EnemyBullet` extended `Phaser.Physics.Arcade.Image`, which has no `preUpdate()` method. `super.preUpdate()` threw `TypeError: (intermediate value).preUpdate is not a function` every frame once any bullet was alive, halting the entire Phaser update loop while Web Audio's `setInterval` kept running. Fix: change both classes to extend `Phaser.Physics.Arcade.Sprite`.
+  - A prior attempt (`64812ce`) added null guards on `this.body` and try-catch — this reduced some errors but did not fix the freeze because the root cause was the wrong base class.
 
 #### Changed / Decisions
-- CLAUDE.md structure decided: three sections — stable reference, living status, append-only journal
-- Agreed this file acts as both technical manual and project memory across sessions
+- Chose Phaser 3 via CDN (no build step) to keep the project simple and instantly shareable
+- All sprites generated procedurally at runtime from pixel arrays — no asset pipeline needed
+- `AudioManager` stored in Phaser registry so all scenes share one Web Audio context
+- GitHub Pages chosen for hosting (free, zero-config for static sites)
 
 #### Next Session
-- Update Current Status and append a journal entry at the start of every session
-- Decide on next feature from the candidate list in Current Status
+- Level select screen
+- More interesting enemies
+- Walls / obstacles
 
 #### Notes
-- Version string in MenuScene (`v1.x`) is the fastest way to confirm a new build loaded in browser
-- GitHub Pages takes ~1 minute to deploy after push; browser cache bypass: Cmd+Shift+R or DevTools Network → Disable cache
-
----
-
-### 2026-06-06 — Session 3 (v1.2)
-
-#### Added
-- **BGM overhaul**: four-voice 80s sci-fi synth system (bass/melody/arp/counter); sustained triangle pad melody (`dur × 6.5` sustain = legato); 8-second melody loop (was 4 s); D Major ch1, A Dorian ch2, B Major ch3, C Harmonic Minor boss
-- **Charge shot redesign**: damage-meter system replacing hold-click mechanic; `Player._chargeMeter` (0–100) fills at `CHARGE_METER_PER_DAMAGE` % per damage point; press **Q** to fire at any level ≥ 20%; bullet damage linearly scales 3–15×, size scales 1.5–4× with meter; glow ring around player changes colour (green → orange → cyan)
-- HUD charge bar always visible (was hidden when empty); shows DEAL DAMAGE / [Q] FIRE READY / * MAX POWER * states; colour codes fill: dim → green → yellow → orange → cyan
-
-#### Fixed
-- Nothing (clean state after v1.1)
-
-#### Changed / Decisions
-- Removed CHARGE_MIN_HOLD, CHARGE_MAX_HOLD, CHARGE_COOLDOWN constants entirely
-- Left-click now only auto-fires normal bullets — no hold mechanic
-- Charge shot tint reflects power level: green (weak) → yellow → cyan (full)
-- `CollisionManager` is now the single place charge meter fill is triggered (after enemy takes damage)
-- Menu hint line updated to explain the new mechanic
-
-#### Next Session
-- Playtest and balance CHARGE_METER_PER_DAMAGE (currently 2% per damage point)
-- Consider additional visual feedback when meter crosses 20% threshold (brief screen pulse?)
-
-#### Notes
-- `addChargeMeter()` uses `Math.floor` comparison to avoid emitting `chargeChanged` on every sub-percent tick — important for performance with fast auto-fire
+- **Critical**: always extend `Phaser.Physics.Arcade.Sprite`, never `Image`, for any object used in a physics group with `runChildUpdate: true`
+- Browser cache is the #1 source of confusion when testing — always verify version string or disable cache in DevTools
 
 ---
 
@@ -250,26 +278,69 @@ Entries are appended newest-first (top of this section = most recent).
 
 ---
 
-### 2026-06-06 — Session 1 (v1.0 → v1.01)
+### 2026-06-06 — Session 3 (v1.2)
 
 #### Added
-- **Initial full game build** (`5b2e58d`): complete Phaser 3 top-down shooter — player, 4 enemy types, 9 levels, wave system, HUD, menu, level complete, game over, high score, procedural sprites via canvas, Web Audio chiptune BGM + SFX, screen shake, death particles, scorch marks, GitHub + Pages setup
+- **BGM overhaul**: four-voice 80s sci-fi synth system (bass/melody/arp/counter); sustained triangle pad melody (`dur × 6.5` sustain = legato); 8-second melody loop (was 4 s); D Major ch1, A Dorian ch2, B Major ch3, C Harmonic Minor boss
+- **Charge shot redesign**: damage-meter system replacing hold-click mechanic; `Player._chargeMeter` (0–100) fills at `CHARGE_METER_PER_DAMAGE` % per damage point; press **Q** to fire at any level ≥ 20%; bullet damage linearly scales 3–15×, size scales 1.5–4× with meter; glow ring around player changes colour (green → orange → cyan)
+- HUD charge bar always visible (was hidden when empty); shows DEAL DAMAGE / [Q] FIRE READY / * MAX POWER * states; colour codes fill: dim → green → yellow → orange → cyan
 
 #### Fixed
-- **Game freeze on shoot** (`b53e721`): root cause — `Bullet` and `EnemyBullet` extended `Phaser.Physics.Arcade.Image`, which has no `preUpdate()` method. `super.preUpdate()` threw `TypeError: (intermediate value).preUpdate is not a function` every frame once any bullet was alive, halting the entire Phaser update loop while Web Audio's `setInterval` kept running. Fix: change both classes to extend `Phaser.Physics.Arcade.Sprite`.
-  - A prior attempt (`64812ce`) added null guards on `this.body` and try-catch — this reduced some errors but did not fix the freeze because the root cause was the wrong base class.
+- Nothing (clean state after v1.1)
 
 #### Changed / Decisions
-- Chose Phaser 3 via CDN (no build step) to keep the project simple and instantly shareable
-- All sprites generated procedurally at runtime from pixel arrays — no asset pipeline needed
-- `AudioManager` stored in Phaser registry so all scenes share one Web Audio context
-- GitHub Pages chosen for hosting (free, zero-config for static sites)
+- Removed CHARGE_MIN_HOLD, CHARGE_MAX_HOLD, CHARGE_COOLDOWN constants entirely
+- Left-click now only auto-fires normal bullets — no hold mechanic
+- Charge shot tint reflects power level: green (weak) → yellow → cyan (full)
+- `CollisionManager` is now the single place charge meter fill is triggered (after enemy takes damage)
+- Menu hint line updated to explain the new mechanic
 
 #### Next Session
-- Level select screen
-- More interesting enemies
-- Walls / obstacles
+- Playtest and balance CHARGE_METER_PER_DAMAGE (currently 2% per damage point)
+- Consider additional visual feedback when meter crosses 20% threshold (brief screen pulse?)
 
 #### Notes
-- **Critical**: always extend `Phaser.Physics.Arcade.Sprite`, never `Image`, for any object used in a physics group with `runChildUpdate: true`
-- Browser cache is the #1 source of confusion when testing — always verify version string or disable cache in DevTools
+- `addChargeMeter()` uses `Math.floor` comparison to avoid emitting `chargeChanged` on every sub-percent tick — important for performance with fast auto-fire
+
+---
+
+### 2026-06-06 — Session 4
+
+#### Added
+- `CLAUDE.md` — initial technical reference document (Project Reference, Current Status, Development Journal)
+
+#### Fixed
+- Nothing
+
+#### Changed / Decisions
+- CLAUDE.md structure decided: three sections — stable reference, living status, append-only journal
+- Agreed this file acts as both technical manual and project memory across sessions
+
+#### Next Session
+- Update Current Status and append a journal entry at the end of every session
+- Decide on next feature from the candidate list in Current Status
+
+#### Notes
+- Version string in MenuScene (`v1.x`) is the fastest way to confirm a new build loaded in browser
+- GitHub Pages takes ~1 minute to deploy after push; browser cache bypass: Cmd+Shift+R or DevTools Network → Disable cache
+
+---
+
+### 2026-06-06 — Session 5
+
+#### Added
+- Section 0 — Session Workflow (IMPORTANT): mandatory end-of-session checklist, journal entry format, enforcement rules
+
+#### Fixed
+- Nothing
+
+#### Changed / Decisions
+- Development Journal ordering standardised to oldest → newest (was newest → oldest in previous version)
+- Added explicit enforcement rules: Current Status must not become stale; journal is append-only; CLAUDE.md is source of truth
+- Section 0 placed before all other sections to ensure it is seen first
+
+#### Next Session
+- Follow the Section 0 workflow at the end of every session going forward
+
+#### Notes
+- If CLAUDE.md contradicts the code, the code is correct — update CLAUDE.md to match, not the other way around

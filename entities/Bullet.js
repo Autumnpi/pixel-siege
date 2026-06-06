@@ -1,18 +1,21 @@
 class Bullet extends Phaser.Physics.Arcade.Sprite {
     constructor(scene, x, y) {
         super(scene, x, y, 'bullet');
-        this._born = 0;
+        this._born    = 0;
         this._lifespan = CONSTANTS.BULLET_LIFESPAN;
+        this.damage   = CONSTANTS.BULLET_DAMAGE;
     }
 
-    fire(x, y, angle, speed, lifespan) {
+    fire(x, y, angle, speed, lifespan, damage, scale) {
         this.setActive(true).setVisible(true);
         this.setPosition(x, y);
         if (!this.body) { this.setActive(false); return; }
         this.body.reset(x, y);
         this.setRotation(angle);
-        this._born = 0;
+        this.setScale(scale || 1);
+        this._born    = 0;
         this._lifespan = lifespan || CONSTANTS.BULLET_LIFESPAN;
+        this.damage   = damage   || CONSTANTS.BULLET_DAMAGE;
         this.scene.physics.velocityFromAngle(
             Phaser.Math.RadToDeg(angle), speed || CONSTANTS.BULLET_SPEED,
             this.body.velocity
@@ -25,6 +28,8 @@ class Bullet extends Phaser.Physics.Arcade.Sprite {
         this._born += delta;
         if (this._born > this._lifespan) {
             this.setActive(false).setVisible(false);
+            this.setScale(1);
+            this.clearTint();
         }
     }
 }
@@ -73,11 +78,27 @@ class BulletPool {
             const b = this.group.get();
             if (!b) return null;
             b.setTexture('bullet');
+            b.clearTint();
             b.fire(x, y, angle);
             b.setDepth(20);
             return b;
         } catch (e) {
             console.warn('BulletPool.fire error:', e);
+            return null;
+        }
+    }
+
+    fireCharged(x, y, angle) {
+        try {
+            const b = this.group.get();
+            if (!b) return null;
+            b.setTexture('bullet');
+            b.fire(x, y, angle, CONSTANTS.CHARGE_SPEED, CONSTANTS.BULLET_LIFESPAN, CONSTANTS.CHARGE_DAMAGE, 3);
+            b.setTint(0x00ffff);
+            b.setDepth(20);
+            return b;
+        } catch (e) {
+            console.warn('BulletPool.fireCharged error:', e);
             return null;
         }
     }

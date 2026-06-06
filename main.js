@@ -10,7 +10,7 @@ const config = {
             debug: false,
         },
     },
-    scene: [BootScene, MenuScene, GameScene, HUDScene, LevelCompleteScene, GameOverScene],
+    scene: [BootScene, MenuScene, LevelSelectScene, GameScene, HUDScene, LevelCompleteScene, GameOverScene],
 };
 
 window.game = new Phaser.Game(config);

@@ -7,6 +7,8 @@ class EnemyBase extends Phaser.Physics.Arcade.Sprite {
         this.scoreValue  = 10;
         this.contactDamage = 1;
         this._textureKey = textureKey || 'enemy_drone';
+        this._dodging = false;
+        this._hasDodge = true;
     }
 
     spawn(x, y) {
@@ -17,6 +19,7 @@ class EnemyBase extends Phaser.Physics.Arcade.Sprite {
         this.clearTint();
         this.setRotation(0);
         this.setDepth(10 + y / 1000);
+        this._dodging = false;
         try { this.play(this._textureKey, true); } catch(e) {}
     }
 
@@ -33,6 +36,7 @@ class EnemyBase extends Phaser.Physics.Arcade.Sprite {
     }
 
     _move(player, time, delta) {
+        if (this._dodging) return;
         const angle = Phaser.Math.Angle.Between(this.x, this.y, player.x, player.y);
         this.scene.physics.velocityFromAngle(
             Phaser.Math.RadToDeg(angle), this.speed, this.body.velocity
@@ -50,6 +54,20 @@ class EnemyBase extends Phaser.Physics.Arcade.Sprite {
         this.scene.time.delayedCall(80, () => {
             if (this.active) this.clearTint();
         });
+
+        // Dodge sideways briefly on hit
+        if (this._hasDodge && this.hp > 0 && this.body && !this._dodging && !this._charging) {
+            this._dodging = true;
+            const player = this.scene.player;
+            if (player) {
+                const angle = Phaser.Math.Angle.Between(this.x, this.y, player.x, player.y);
+                const dodgeDir = Math.random() < 0.5 ? Math.PI / 2 : -Math.PI / 2;
+                this.scene.physics.velocityFromAngle(
+                    Phaser.Math.RadToDeg(angle + dodgeDir), this.speed * 2.2, this.body.velocity
+                );
+            }
+            this.scene.time.delayedCall(260, () => { this._dodging = false; });
+        }
 
         if (this.hp <= 0) this.die();
     }

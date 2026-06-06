@@ -13,7 +13,13 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.maxHp = CONSTANTS.PLAYER_HP;
         this.lastShot = -9999;
         this.invincible = false;
-        this._invTimer = null;
+
+        // Charge state
+        this._chargeStart = 0;
+        this._charging = false;
+        this._chargeLastFired = -9999;
+        this._chargeReadyPlayed = false;
+        this._pointerWasDown = false;
 
         this.play('player');
     }
@@ -21,10 +27,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     update(cursors, wasd, pointer, bulletPool, time) {
         this._handleMovement(cursors, wasd);
         this._handleAim(pointer);
-
-        if (pointer.isDown && time > this.lastShot + CONSTANTS.BULLET_COOLDOWN) {
-            this.shoot(bulletPool, time);
-        }
+        this._handleShooting(pointer, bulletPool, time);
     }
 
     _handleMovement(cursors, wasd) {
@@ -47,14 +50,77 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.setRotation(angle);
     }
 
-    shoot(bulletPool, time) {
+    _handleShooting(pointer, bulletPool, time) {
+        const isDown = pointer.isDown;
+
+        if (isDown) {
+            if (this._chargeStart === 0) {
+                this._chargeStart = time;
+                this._chargeReadyPlayed = false;
+            }
+            const held = time - this._chargeStart;
+
+            if (held < CONSTANTS.CHARGE_MIN_HOLD) {
+                // Normal auto-fire while tapping/short press
+                if (time > this.lastShot + CONSTANTS.BULLET_COOLDOWN) {
+                    this._fireNormal(bulletPool, time);
+                }
+                this._charging = false;
+                this.scene.events.emit('chargeChanged', 0);
+            } else {
+                // Charging — stop normal fire, show charge meter
+                this._charging = true;
+                const pct = Math.min(
+                    (held - CONSTANTS.CHARGE_MIN_HOLD) / (CONSTANTS.CHARGE_MAX_HOLD - CONSTANTS.CHARGE_MIN_HOLD),
+                    1
+                );
+                this.scene.events.emit('chargeChanged', pct);
+                if (pct >= 1 && !this._chargeReadyPlayed) {
+                    this._chargeReadyPlayed = true;
+                    this.scene.audio.play('charge_ready');
+                }
+            }
+        } else {
+            // Pointer just released
+            if (this._pointerWasDown && this._charging) {
+                if (time > this._chargeLastFired + CONSTANTS.CHARGE_COOLDOWN) {
+                    this._fireCharged(bulletPool, time);
+                    this._chargeLastFired = time;
+                }
+            }
+            this._charging = false;
+            this._chargeStart = 0;
+            this._chargeReadyPlayed = false;
+            this.scene.events.emit('chargeChanged', 0);
+        }
+
+        this._pointerWasDown = isDown;
+    }
+
+    _fireNormal(bulletPool, time) {
         try {
             bulletPool.fire(this.x, this.y, this.rotation);
             this.scene.audio.play('shoot');
         } catch (e) {
-            console.warn('Player.shoot error:', e);
+            console.warn('Player._fireNormal error:', e);
         }
         this.lastShot = time;
+    }
+
+    _fireCharged(bulletPool, time) {
+        try {
+            bulletPool.fireCharged(this.x, this.y, this.rotation);
+            this.scene.audio.play('charge_shoot');
+            this.scene.cameras.main.shake(120, 0.018);
+        } catch (e) {
+            console.warn('Player._fireCharged error:', e);
+        }
+        this.lastShot = time;
+    }
+
+    // kept for external callers
+    shoot(bulletPool, time) {
+        this._fireNormal(bulletPool, time);
     }
 
     takeDamage(amount) {
